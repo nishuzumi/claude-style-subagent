@@ -1,6 +1,6 @@
 {
   "name": "claude-style-subagent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Claude Code-style, controllable Pi subagents with a live TUI dock, foreground switching, persistence, and steering.",
   "homepage": "https://github.com/nishuzumi/claude-style-subagent#readme",
   "bugs": {

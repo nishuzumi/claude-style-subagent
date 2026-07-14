@@ -25,7 +25,6 @@ type BackgroundEntry = {
 
 type HostState = {
   foregroundId: string;
-  mainSession: RuntimePatchedAgentSession;
   mainProxy: SessionUiProxy;
   background: Map<string, BackgroundEntry>;
   agentsApi: ForegroundAgentsApi;
@@ -68,9 +67,12 @@ function currentProxy(state: HostState): SessionUiProxy | undefined {
   return state.background.get(state.foregroundId)?.proxy;
 }
 
-function currentSession(state: HostState): RuntimePatchedAgentSession {
-  if (state.foregroundId === "main") return state.mainSession;
-  return state.background.get(state.foregroundId)?.session ?? state.mainSession;
+function currentSession(
+  state: HostState,
+  mainSession: RuntimePatchedAgentSession,
+): RuntimePatchedAgentSession {
+  if (state.foregroundId === "main") return mainSession;
+  return state.background.get(state.foregroundId)?.session ?? mainSession;
 }
 
 function renderRows(component: Component, width: number): number {
@@ -263,8 +265,11 @@ export async function installForegroundRuntimePatches(): Promise<"native" | "pat
   Object.defineProperty(prototype, "session", {
     configurable: true,
     get(this: Host) {
+      // /new, /fork, and /resume replace runtimeHost.session; resolve it lazily
+      // so extension rebinding never targets the invalidated main session.
+      const mainSession = originalSessionGetter.call(this) as RuntimePatchedAgentSession;
       const state = states.get(this);
-      return state ? currentSession(state) : originalSessionGetter.call(this);
+      return state ? currentSession(state, mainSession) : mainSession;
     },
   });
 
@@ -277,14 +282,12 @@ export async function installForegroundRuntimePatches(): Promise<"native" | "pat
     let state = states.get(this);
     if (!state) {
       const direct = originalCreateContext.call(this) as ExtensionUIContext;
-      const mainSession = this.runtimeHost.session as RuntimePatchedAgentSession;
       const placeholder = {} as HostState;
       const agentsApi = createAgentsApi(this, () => originalCreateContext.call(this) as ExtensionUIContext);
       addAgentsApi(direct, agentsApi);
       const mainProxy = new SessionUiProxy("main", direct);
       Object.assign(placeholder, {
         foregroundId: "main",
-        mainSession,
         mainProxy,
         background: new Map<string, BackgroundEntry>(),
         agentsApi,

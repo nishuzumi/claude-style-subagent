@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-07-15
+
+- Fix session replacement rebinding against an invalidated main session, which caused unrelated extensions to receive stale contexts after `/new`, `/fork`, or `/resume`.
+- Add an interactive regression test covering extension rebinding after `/new`.
+
 ## 0.1.0 — 2026-07-12
 
 - Add controllable in-process Pi subagents through `agents`.
